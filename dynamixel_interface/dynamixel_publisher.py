@@ -17,7 +17,8 @@ class dynamixel_publisher(Node):
     def jointState_callback(self):
         targetDistance = [-10, -20]
         joy_state_msg = JointState()
-        # joy_state_msg.name = ["11", "12", "13", "21", "22", "23"]
+        joy_state_msg.name = ["11", "12", "13", "21", "22", "23", "31", "32", "33"
+                            , "41", "42", "43", "51", "52", "53", "61", "62", "63"]
 
         joy_state_msg.position = [self.distanceCalculation(x) for x in targetDistance]
 

@@ -33,6 +33,9 @@ class dxl_communication():
         self.buildReadCommand()
         self.buildWriteCommand()
 
+        # Adding motors id into the class
+        self.motorIdManagement(TARGET_DXL)
+
     def buildWriteCommand(self):
         self.groupSyncWrite = GroupSyncWrite(self.portHandler, self.packetHandler, self.addrWriteParam, self.lenWriteParam)
 
@@ -98,7 +101,9 @@ class dxl_communication():
         #Firstly, checking the motor id and target should be the same size
         # num_ids = self.num_motos
         #Reshape from the list to numpy array to better performance on calculation.
+
         num_legs = int(len(input_list)) #Each leg has 3 motors
+        #print(num_legs)
         input_list_numpy =  np.array(input_list).reshape(num_legs, 1).astype('int')
         
         # #Finally, the motor id array would be return to the same array with int data type.
@@ -174,7 +179,7 @@ class dxl_communication():
         for item in range(len(self.data_size_return)):
             get_data = self.groupSyncRead.getData(input_list, self.address_return[item], self.data_size_return[item])
             data_packed_list.append(self.negative_convert(get_data))
- 
+
         self.groupSyncRead.clearParam()
 
         return data_packed_list
@@ -185,10 +190,14 @@ class dxl_communication():
     def negative_convert(self, targetData):
 
         #Checking wheter is negative or positive
-        if (targetData >= (2**15)):
+        if (targetData >= (2**31)):
+            targetData = targetData - (2**32)
+
+        elif (targetData >= (2**15)):
             targetData = targetData - (2**16)
 
         return float(targetData)
+    
     
     def syncWritePacket(self, id_array, input_data):
         #If the size of input data more than 2 byte, the sending packet would be changed.
@@ -314,26 +323,64 @@ class dxl_interface(dxl_communication):
         self.addrWriteParam, self.lenWriteParam = ADDR_GOAL_CURRENT, LEN_PRESENT_LOAD
         super().buildWriteCommand()
 
-        _goalPosition = super().arrayManagement(targetCurrent)
+        _goalCurrent = super().arrayManagement(targetCurrent)
 
-        super().nestedSeqFunction(super().syncWritePacket, _goalPosition)
+        super().nestedSeqFunction(super().syncWritePacket, _goalCurrent)
+        super().syncWriteByte()
+
+    def writeVelocityLimit(self, velocity_limit):
+                
+        self.addrWriteParam, self.lenWriteParam = ADDR_VELOCITY_LIMIT, LEN_PRESENT_POSITION
+        super().buildWriteCommand()
+
+        _vel_limit = super().arrayManagement(velocity_limit)
+
+        super().nestedSeqFunction(super().syncWritePacket, _vel_limit)
         super().syncWriteByte()
         
+    def writeProfileVelocity(self, profile_vel_limit):
+                
+        self.addrWriteParam, self.lenWriteParam = ADDR_PROFILE_VELOCITY, LEN_PRESENT_POSITION
+        super().buildWriteCommand()
+
+        _vel_limit = super().arrayManagement(profile_vel_limit)
+
+        super().nestedSeqFunction(super().syncWritePacket, _vel_limit)
+        super().syncWriteByte()
+
+    def writeGoalVelocity(self, targetVelocity):
+                
+        self.addrWriteParam, self.lenWriteParam = ADDR_GOAL_VELOCITY, LEN_PRESENT_VELOCITY
+        super().buildWriteCommand()
+
+        _goalVelocity = super().arrayManagement(targetVelocity)
+
+        super().nestedSeqFunction(super().syncWritePacket, _goalVelocity)
+        super().syncWriteByte()
+
+    def writeVelocityLimit(self, targetLimit):
+
+        self.addrWriteParam, self.lenWriteParam = ADDR_VELOCITY_LIMIT, LEN_VELOCITY_LIMIT
+        super().buildWriteCommand()
+
         
+        _limitVelocity = super().arrayManagement(targetLimit)
+
+        super().nestedSeqFunction(super().syncWritePacket, _limitVelocity)
+        super().syncWriteByte()
 
 if __name__ == "__main__":
     dxl_obj = dxl_interface()
     dxl_obj.openPort()
     # dxl_obj.arrayManagement(np.array([[31,32,33], [11,12,13]]))
     # dxl_obj.arrayManagement(np.array([["31","32","33"], ["11","12","13"], ["51","52","53"]]))
-    dxl_obj.motorIdManagement(["1","2"])
+    dxl_obj.motorIdManagement(["1", "2", "3"])
     
     dxl_obj.configReadingProtocol(["Present Position", "Present Load", "Present Velocity"])
-    dxl_obj.writeOperatingMode([0x05,0x05])
-    dxl_obj.writeGoalCurrent([54,54])
+    dxl_obj.writeOperatingMode([0x01, 0x01, 0x05])
+    dxl_obj.writeGoalVelocity([20, 20, 60])
     # print(dxl_obj.address_return)
     # print(dxl_obj.data_size_return)
     # print(dxl_obj.addrReadParam)
-    print(dxl_obj.readDataFromDXL()[0])
-
+    print(dxl_obj.readDataFromDXL())
 
